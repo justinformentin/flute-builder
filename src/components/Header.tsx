@@ -8,7 +8,7 @@ export function Header({
   setPage: (page: Page) => void;
 }) {
   return (
-    <header className="flex h-[70px] items-center justify-between border-b-[3px] border-signal bg-navy px-4 text-white md:px-7">
+    <header className="fixed left-0 right-0 top-0 z-50 flex h-[50px] items-center justify-between border-b-[3px] border-signal bg-navy px-4 text-white md:px-7">
       <div className="flex items-center gap-3">
         <span className="border border-slate-500 p-2 font-mono">FB</span>
         <div>

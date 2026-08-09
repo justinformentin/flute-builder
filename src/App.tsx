@@ -9,7 +9,9 @@ export default function App() {
   return (
     <>
       <Header page={page} setPage={setPage} />
-      {page === 'designer' ? <Designer /> : <Explorer />}
+      <div className="pt-[50px]">
+        {page === 'designer' ? <Designer /> : <Explorer />}
+      </div>
     </>
   );
 }

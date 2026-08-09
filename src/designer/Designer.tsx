@@ -104,8 +104,8 @@ export function Designer() {
   };
 
   return (
-    <main className="grid min-h-[calc(100vh-70px)] grid-cols-1 xl:grid-cols-[410px_minmax(700px,1fr)]">
-      <aside className="border-r border-slate-300 bg-white xl:sticky xl:top-0 xl:h-[calc(100vh-70px)] xl:overflow-y-auto">
+    <main className="grid min-h-[calc(100vh-50px)] grid-cols-1 xl:grid-cols-[410px_minmax(700px,1fr)]">
+      <aside className="border-r border-slate-300 bg-white xl:sticky xl:top-[50px] xl:h-[calc(100vh-50px)] xl:overflow-y-auto">
         <div className="flex justify-between border-b border-slate-200 p-5 font-mono text-[10px] tracking-wider">
           <span>DESIGN INPUTS</span>
           <span className="text-slate-400">Instant recalculation</span>
