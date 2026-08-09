@@ -1,24 +1,24 @@
-import { pipeId, pipePresets } from '../materials/pipePresets'
+import { pipeId, pipePresets } from '../materials/pipePresets';
 
 export interface DesignState {
-  root: number
-  octave: number
-  scaleId: string
-  a4: number
-  pipeIndex: number
-  outsideDiameterMm: number
-  wallMm: number
-  embouchureMm: number
-  lipPlate: boolean
-  lipPlateMm: number
-  overrideChimney: boolean
-  chimneyMm: number
-  holeDiameters: number[]
-  temperatureC: number
-  plugOffsetMm: number
-  plugThicknessMm: number
-  headMarginMm: number
-  roundToMm: number
+  root: number;
+  octave: number;
+  scaleId: string;
+  a4: number;
+  pipeIndex: number;
+  outsideDiameterMm: number;
+  wallMm: number;
+  embouchureMm: number;
+  lipPlate: boolean;
+  lipPlateMm: number;
+  overrideChimney: boolean;
+  chimneyMm: number;
+  holeDiameters: number[];
+  temperatureC: number;
+  plugOffsetMm: number;
+  plugThicknessMm: number;
+  headMarginMm: number;
+  roundToMm: number;
 }
 
 export const initialDesign: DesignState = {
@@ -40,4 +40,4 @@ export const initialDesign: DesignState = {
   plugThicknessMm: 12,
   headMarginMm: 8,
   roundToMm: 5,
-}
+};
