@@ -5,6 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>flute-builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: '#172b34',
+              navy: '#10232d',
+              teal: '#006b7d',
+              signal: '#ee6c36',
+              paper: '#f4f5f2',
+            },
+            fontFamily: {
+              mono: ['DM Mono', 'monospace'],
+              sans: ['Manrope', 'sans-serif'],
+            },
+          },
+        },
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
