@@ -139,7 +139,7 @@ export function calculateFlute(input: FluteInput): FluteResult {
     } else if ((hole.edgeSpacingMm ?? 99) < 4) {
       notices.push({
         severity: 'warning',
-        message: `Hole ${index + 1} has under 4 mm edge clearance.`,
+        message: `Holes ${index} and ${index + 1} have only ${hole.edgeSpacingMm?.toFixed(1)} mm edge clearance (${hole.centerSpacingMm?.toFixed(1)} mm center-to-center).`,
       });
     }
     if (hole.cutoffHz < hole.frequencyHz) {

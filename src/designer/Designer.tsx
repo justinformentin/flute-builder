@@ -335,9 +335,16 @@ export function Designer() {
               />
             </Field>
             <Field label="Acoustic model">
-              <output className={inputClass}>Corrected Flutomat</output>
+              <output className={inputClass}>Cylindrical corrected</output>
             </Field>
           </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Plug offset, plug thickness, head margin, and blank rounding affect
+            only the stock estimate. They never move the embouchure or tone
+            holes. This model includes temperature, open-end, embouchure, and
+            tone-hole corrections and is not expected to reproduce Flutomat
+            exactly.
+          </p>
         </Section>
       </aside>
 

@@ -54,3 +54,19 @@ test('lip plate chimney changes acoustic dimensions', () => {
   assert.notEqual(plain.soundingLengthMm, plated.soundingLengthMm);
   assert.ok(plated.embouchureCorrectionMm > plain.embouchureCorrectionMm);
 });
+
+test('plug and blank dimensions do not change the acoustic layout', () => {
+  const first = calculateFlute(standardInput);
+  const second = calculateFlute({
+    ...standardInput,
+    plugOffsetMm: 35,
+    plugThicknessMm: 20,
+    headMarginMm: 15,
+    constructionRoundingMm: 10,
+  });
+
+  assert.equal(second.soundingLengthMm, first.soundingLengthMm);
+  assert.deepEqual(second.holes, first.holes);
+  assert.notEqual(second.physicalLengthMm, first.physicalLengthMm);
+  assert.notEqual(second.suggestedBlankMm, first.suggestedBlankMm);
+});

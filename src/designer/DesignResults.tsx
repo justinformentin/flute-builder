@@ -14,6 +14,8 @@ function Summary({
   rootHz: number;
   boreMm: number;
 }) {
+  const acousticHalfWaveMm =
+    (result.speedOfSoundMps * 1000) / (2 * rootHz);
   const items = [
     [
       'ROOT',
@@ -33,21 +35,37 @@ function Summary({
     ],
   ];
   return (
-    <div className="my-5 grid grid-cols-2 bg-navy text-white lg:grid-cols-4">
-      {items.map(([label, value, detail], index) => (
-        <div className="border-r border-slate-600 p-5" key={label}>
-          <small className="block font-mono text-[9px] text-slate-400">
-            {label}
-          </small>
-          <strong
-            className={`my-2 block font-mono text-xl ${index === 2 ? 'text-orange-300' : ''}`}
-          >
-            {value}
-          </strong>
-          <span className="text-[10px] text-slate-400">{detail}</span>
+    <>
+      <div className="my-5 mb-0 grid grid-cols-2 bg-navy text-white lg:grid-cols-4">
+        {items.map(([label, value, detail], index) => (
+          <div className="border-r border-slate-600 p-5" key={label}>
+            <small className="block font-mono text-[9px] text-slate-400">
+              {label}
+            </small>
+            <strong
+              className={`my-2 block font-mono text-xl ${index === 2 ? 'text-orange-300' : ''}`}
+            >
+              {value}
+            </strong>
+            <span className="text-[10px] text-slate-400">{detail}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mb-5 grid gap-px bg-slate-300 font-mono text-[10px] sm:grid-cols-3">
+        <div className="bg-slate-100 p-3">
+          <b className="block text-slate-500">ACOUSTIC HALF-WAVE</b>
+          {acousticHalfWaveMm.toFixed(1)} mm
         </div>
-      ))}
-    </div>
+        <div className="bg-slate-100 p-3">
+          <b className="block text-slate-500">OPEN-FOOT CORRECTION</b>
+          − {result.endCorrectionMm.toFixed(1)} mm
+        </div>
+        <div className="bg-slate-100 p-3">
+          <b className="block text-slate-500">EMBOUCHURE CORRECTION</b>
+          − {result.embouchureCorrectionMm.toFixed(1)} mm
+        </div>
+      </div>
+    </>
   );
 }
 
