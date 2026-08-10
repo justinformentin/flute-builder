@@ -3,12 +3,17 @@ import type { FluteResult } from '../acoustics/types';
 interface FluteDiagramProps {
   result: FluteResult;
   labels: string[];
+  outsideDiameterMm: number;
 }
 
-export function FluteDiagram({ result, labels }: FluteDiagramProps) {
+export function FluteDiagram({ result, labels, outsideDiameterMm }: FluteDiagramProps) {
   const totalLengthMm = result.suggestedBlankMm;
   const positionX = (millimeters: number) =>
     55 + (millimeters / totalLengthMm) * 780;
+  // Tube body is drawn at 48px height representing the outside diameter.
+  // Scale hole radius proportionally so a hole == outside diameter fills the tube.
+  const holeRadius = (diameterMm: number) =>
+    Math.max(2, (diameterMm / outsideDiameterMm) * 24);
 
   return (
     <div className="mt-3 border border-slate-200 bg-white p-3">
@@ -46,7 +51,7 @@ export function FluteDiagram({ result, labels }: FluteDiagramProps) {
             <circle
               cx={positionX(hole.fromFootMm)}
               cy="102"
-              r={Math.max(5, (hole.diameterMm / totalLengthMm) * 700)}
+              r={holeRadius(hole.diameterMm)}
               fill="#0e2731"
               stroke="white"
               strokeWidth="2"
