@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { calculateFlute } from '../acoustics/calculateFlute';
 import { FluteDiagram } from '../components/FluteDiagram';
@@ -11,27 +12,19 @@ import {
 import { pipeId, pipePresets } from '../materials/pipePresets';
 import { noteAtCents, noteFrequency, roots } from '../music/notes';
 import { scaleById, scales } from '../music/scales';
+import { saveDesign } from '../saved/storage';
 import { DesignResults } from './DesignResults';
-import { initialDesign, type DesignState } from './designState';
+import { type DesignState } from './designState';
 
-export function Designer() {
-  const [design, setDesign] = useState<DesignState>(() => {
-    const query = new URLSearchParams(window.location.search);
-    const saved = localStorage.getItem('flute-builder-design');
-    const base = saved
-      ? { ...initialDesign, ...JSON.parse(saved) }
-      : initialDesign;
-    const rootName = query.get('root');
-    const rootIndex = roots.findIndex(
-      (root) => root.split('/')[0] === rootName,
-    );
-    return {
-      ...base,
-      root: rootIndex >= 0 ? rootIndex : base.root,
-      octave: Number(query.get('octave')) || base.octave,
-      scaleId: query.get('scale') || base.scaleId,
-    };
-  });
+export function Designer({
+  design,
+  setDesign,
+}: {
+  design: DesignState;
+  setDesign: Dispatch<SetStateAction<DesignState>>;
+}) {
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState('');
 
   const update = <Key extends keyof DesignState>(
     key: Key,
@@ -107,287 +100,336 @@ export function Designer() {
     );
   };
 
-  return (
-    <main className="grid min-h-[calc(100vh-50px)] grid-cols-1 xl:grid-cols-[410px_minmax(700px,1fr)]">
-      <aside className="border-r border-slate-300 bg-white xl:sticky xl:top-[50px] xl:h-[calc(100vh-50px)] xl:overflow-y-auto">
-        <div className="flex justify-between border-b border-slate-200 p-5 font-mono text-[10px] tracking-wider">
-          <span>DESIGN INPUTS</span>
-          <span className="text-slate-400">Instant recalculation</span>
-        </div>
+  const handleSave = () => {
+    saveDesign(saveName, design);
+    setShowSaveModal(false);
+    setSaveName('');
+  };
 
-        <Section number="01" title="Pitch & tuning">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Root">
+  return (
+    <>
+      {showSaveModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSaveModal(false); }}
+        >
+          <div className="w-full max-w-sm border border-slate-200 bg-white p-6 shadow-xl">
+            <h2 className="mb-1 font-mono text-[10px] font-medium tracking-wider text-slate-500">
+              SAVE DESIGN
+            </h2>
+            <p className="mb-4 text-sm font-bold text-ink">Name this design</p>
+            <input
+              autoFocus
+              className={inputClass}
+              placeholder="e.g. D major pentatonic in PVC ½&quot;"
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape') setShowSaveModal(false);
+              }}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button className={buttonClass} onClick={() => setShowSaveModal(false)}>
+                Cancel
+              </button>
+              <button
+                className="border border-navy bg-navy px-3 py-2 font-mono text-[10px] text-white hover:bg-navy/80"
+                onClick={handleSave}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="grid min-h-[calc(100vh-50px)] grid-cols-1 xl:grid-cols-[410px_minmax(700px,1fr)]">
+        <aside className="border-r border-slate-300 bg-white xl:sticky xl:top-[50px] xl:h-[calc(100vh-50px)] xl:overflow-y-auto">
+          <div className="flex justify-between border-b border-slate-200 p-5 font-mono text-[10px] tracking-wider">
+            <span>DESIGN INPUTS</span>
+            <button
+              className={buttonClass}
+              onClick={() => { setSaveName(''); setShowSaveModal(true); }}
+            >
+              Save Design
+            </button>
+          </div>
+
+          <Section number="01" title="Pitch & tuning">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Root">
+                <select
+                  className={inputClass}
+                  value={design.root}
+                  onChange={(event) => update('root', Number(event.target.value))}
+                >
+                  {roots.map((root, index) => (
+                    <option key={root} value={index}>
+                      {root}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Octave">
+                <select
+                  className={inputClass}
+                  value={design.octave}
+                  onChange={(event) =>
+                    update('octave', Number(event.target.value))
+                  }
+                >
+                  {[2, 3, 4, 5, 6, 7].map((octave) => (
+                    <option key={octave}>{octave}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Scale">
               <select
                 className={inputClass}
-                value={design.root}
-                onChange={(event) => update('root', Number(event.target.value))}
+                value={design.scaleId}
+                onChange={(event) => update('scaleId', event.target.value)}
               >
-                {roots.map((root, index) => (
-                  <option key={root} value={index}>
-                    {root}
+                {scales.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Octave">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Reference A4">
+                <NumberInput
+                  value={design.a4}
+                  onChange={(value) => update('a4', value)}
+                  unit="Hz"
+                  step={1}
+                />
+              </Field>
+              <Field label="Root frequency">
+                <output className={inputClass}>{rootHz.toFixed(2)} Hz</output>
+              </Field>
+            </div>
+          </Section>
+
+          <Section number="02" title="Tube geometry">
+            <Field label="Tube preset">
               <select
                 className={inputClass}
-                value={design.octave}
-                onChange={(event) =>
-                  update('octave', Number(event.target.value))
-                }
+                value={design.pipeIndex}
+                onChange={(event) => selectPipe(Number(event.target.value))}
               >
-                {[2, 3, 4, 5, 6, 7].map((octave) => (
-                  <option key={octave}>{octave}</option>
+                {pipePresets.map((pipe, index) => (
+                  <option key={pipe.id} value={index}>
+                    {pipe.name}
+                  </option>
                 ))}
               </select>
             </Field>
-          </div>
-          <Field label="Scale">
-            <select
-              className={inputClass}
-              value={design.scaleId}
-              onChange={(event) => update('scaleId', event.target.value)}
-            >
-              {scales.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Reference A4">
-              <NumberInput
-                value={design.a4}
-                onChange={(value) => update('a4', value)}
-                unit="Hz"
-                step={1}
-              />
-            </Field>
-            <Field label="Root frequency">
-              <output className={inputClass}>{rootHz.toFixed(2)} Hz</output>
-            </Field>
-          </div>
-        </Section>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Outside diameter">
+                <NumberInput
+                  value={design.outsideDiameterMm}
+                  onChange={(value) => update('outsideDiameterMm', value)}
+                />
+              </Field>
+              <Field label="Wall thickness">
+                <NumberInput
+                  value={design.wallMm}
+                  onChange={(value) => update('wallMm', value)}
+                />
+              </Field>
+            </div>
+            <div className="flex justify-between bg-slate-100 p-3 font-mono text-[10px] text-slate-500">
+              INTERNAL BORE{' '}
+              <strong className="text-teal">{boreMm.toFixed(3)} mm</strong>
+            </div>
+            <p className="text-[10px] leading-4 text-slate-500">
+              Pipe dimensions vary by manufacturer and tolerance. For best
+              results, measure your actual pipe with calipers.
+            </p>
+          </Section>
 
-        <Section number="02" title="Tube geometry">
-          <Field label="Tube preset">
-            <select
-              className={inputClass}
-              value={design.pipeIndex}
-              onChange={(event) => selectPipe(Number(event.target.value))}
-            >
-              {pipePresets.map((pipe, index) => (
-                <option key={pipe.id} value={index}>
-                  {pipe.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Outside diameter">
-              <NumberInput
-                value={design.outsideDiameterMm}
-                onChange={(value) => update('outsideDiameterMm', value)}
+          <Section number="03" title="Embouchure">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Opening diameter">
+                <NumberInput
+                  value={design.embouchureMm}
+                  onChange={(value) => update('embouchureMm', value)}
+                />
+              </Field>
+              <Field label="Effective chimney">
+                <output className={inputClass}>
+                  {effectiveChimneyMm.toFixed(2)} mm
+                </output>
+              </Field>
+            </div>
+            <label className="flex items-center gap-2 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={design.lipPlate}
+                onChange={(event) => update('lipPlate', event.target.checked)}
               />
-            </Field>
-            <Field label="Wall thickness">
-              <NumberInput
-                value={design.wallMm}
-                onChange={(value) => update('wallMm', value)}
-              />
-            </Field>
-          </div>
-          <div className="flex justify-between bg-slate-100 p-3 font-mono text-[10px] text-slate-500">
-            INTERNAL BORE{' '}
-            <strong className="text-teal">{boreMm.toFixed(3)} mm</strong>
-          </div>
-          <p className="text-[10px] leading-4 text-slate-500">
-            Pipe dimensions vary by manufacturer and tolerance. For best
-            results, measure your actual pipe with calipers.
-          </p>
-        </Section>
-
-        <Section number="03" title="Embouchure">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Opening diameter">
-              <NumberInput
-                value={design.embouchureMm}
-                onChange={(value) => update('embouchureMm', value)}
-              />
-            </Field>
-            <Field label="Effective chimney">
-              <output className={inputClass}>
-                {effectiveChimneyMm.toFixed(2)} mm
-              </output>
-            </Field>
-          </div>
-          <label className="flex items-center gap-2 text-xs font-semibold">
-            <input
-              type="checkbox"
-              checked={design.lipPlate}
-              onChange={(event) => update('lipPlate', event.target.checked)}
-            />
-            Lip plate enabled
-          </label>
-          {design.lipPlate && (
-            <Field label="Lip plate thickness">
-              <NumberInput
-                value={design.lipPlateMm}
-                onChange={(value) => update('lipPlateMm', value)}
-              />
-            </Field>
-          )}
-          <label className="flex items-center gap-2 text-xs font-semibold">
-            <input
-              type="checkbox"
-              checked={design.overrideChimney}
-              onChange={(event) =>
-                update('overrideChimney', event.target.checked)
-              }
-            />
-            Override effective chimney
-          </label>
-          {design.overrideChimney && (
-            <Field label="Effective chimney override">
-              <NumberInput
-                value={design.chimneyMm}
-                onChange={(value) => update('chimneyMm', value)}
-              />
-            </Field>
-          )}
-        </Section>
-
-        <Section number="04" title="Tone holes">
-          <div className="flex items-center gap-1">
-            <span className="mr-auto font-mono text-[9px]">SET ALL</span>
-            {[6, 7, 8, 9].map((diameter) => (
-              <button
-                className={buttonClass}
-                key={diameter}
-                onClick={() => setAllHoles(diameter)}
-              >
-                {diameter} mm
-              </button>
-            ))}
-          </div>
-          {scale.cents.map((cents, index) => (
-            <div
-              className="grid grid-cols-[30px_1fr_90px_70px] items-center gap-2 border-t border-slate-200 py-2"
-              key={`${cents}-${index}`}
-            >
-              <strong className="bg-navy p-2 text-center font-mono text-[10px] text-white">
-                H{index + 1}
-              </strong>
-              <span>
-                <b className="block text-xs">{noteLabels[index]}</b>
-                <small className="block font-mono text-[9px] text-slate-500">
-                  +{cents} cents
-                </small>
-              </span>
-              <NumberInput
-                value={design.holeDiameters[index]}
-                onChange={(value) =>
-                  update(
-                    'holeDiameters',
-                    design.holeDiameters.map((diameter, itemIndex) =>
-                      itemIndex === index ? value : diameter,
-                    ),
-                  )
+              Lip plate enabled
+            </label>
+            {design.lipPlate && (
+              <Field label="Lip plate thickness">
+                <NumberInput
+                  value={design.lipPlateMm}
+                  onChange={(value) => update('lipPlateMm', value)}
+                />
+              </Field>
+            )}
+            <label className="flex items-center gap-2 text-xs font-semibold">
+              <input
+                type="checkbox"
+                checked={design.overrideChimney}
+                onChange={(event) =>
+                  update('overrideChimney', event.target.checked)
                 }
               />
-              <output className="text-right font-mono text-[10px]">
-                {result.holes[index]?.fromFootMm.toFixed(1)} mm
-              </output>
-            </div>
-          ))}
-        </Section>
+              Override effective chimney
+            </label>
+            {design.overrideChimney && (
+              <Field label="Effective chimney override">
+                <NumberInput
+                  value={design.chimneyMm}
+                  onChange={(value) => update('chimneyMm', value)}
+                />
+              </Field>
+            )}
+          </Section>
 
-        <Section number="05" title="Construction & advanced">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Plug offset">
-              <NumberInput
-                value={design.plugOffsetMm}
-                onChange={(value) => update('plugOffsetMm', value)}
-              />
-            </Field>
-            <Field label="Plug thickness">
-              <NumberInput
-                value={design.plugThicknessMm}
-                onChange={(value) => update('plugThicknessMm', value)}
-              />
-            </Field>
-            <Field label="Head margin">
-              <NumberInput
-                value={design.headMarginMm}
-                onChange={(value) => update('headMarginMm', value)}
-              />
-            </Field>
-            <Field label="Round blank up to">
-              <NumberInput
-                value={design.roundToMm}
-                onChange={(value) => update('roundToMm', value)}
-              />
-            </Field>
-            <Field label="Temperature">
-              <NumberInput
-                value={design.temperatureC}
-                onChange={(value) => update('temperatureC', value)}
-                unit="°C"
-              />
-            </Field>
-            <Field label="Acoustic model">
-              <output className={inputClass}>Experimental cylindrical</output>
-            </Field>
-          </div>
-          <div className="mt-3 grid gap-2 border border-slate-200 p-3 text-xs">
-            {[
-              [
-                'adjustSpeedForTemperature',
-                'Temperature-adjust speed of sound',
-              ],
-              ['applyEndCorrection', 'Open-foot end correction'],
-              ['applyEmbouchureCorrection', 'Embouchure correction'],
-              ['applyToneHoleCorrections', 'Tone-hole corrections'],
-            ].map(([key, label]) => (
-              <label className="flex items-center gap-2" key={key}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(design[key as keyof DesignState])}
-                  onChange={(event) =>
-                    update(key as keyof DesignState, event.target.checked)
+          <Section number="04" title="Tone holes">
+            <div className="flex items-center gap-1">
+              <span className="mr-auto font-mono text-[9px]">SET ALL</span>
+              {[6, 7, 8, 9].map((diameter) => (
+                <button
+                  className={buttonClass}
+                  key={diameter}
+                  onClick={() => setAllHoles(diameter)}
+                >
+                  {diameter} mm
+                </button>
+              ))}
+            </div>
+            {scale.cents.map((cents, index) => (
+              <div
+                className="grid grid-cols-[30px_1fr_90px_70px] items-center gap-2 border-t border-slate-200 py-2"
+                key={`${cents}-${index}`}
+              >
+                <strong className="bg-navy p-2 text-center font-mono text-[10px] text-white">
+                  H{index + 1}
+                </strong>
+                <span>
+                  <b className="block text-xs">{noteLabels[index]}</b>
+                  <small className="block font-mono text-[9px] text-slate-500">
+                    +{cents} cents
+                  </small>
+                </span>
+                <NumberInput
+                  value={design.holeDiameters[index]}
+                  onChange={(value) =>
+                    update(
+                      'holeDiameters',
+                      design.holeDiameters.map((diameter, itemIndex) =>
+                        itemIndex === index ? value : diameter,
+                      ),
+                    )
                   }
                 />
-                {label}
-              </label>
+                <output className="text-right font-mono text-[10px]">
+                  {result.holes[index]?.fromFootMm.toFixed(1)} mm
+                </output>
+              </div>
             ))}
-          </div>
-          <p className="mt-3 text-xs leading-5 text-slate-500">
-            Plug offset, plug thickness, head margin, and blank rounding affect
-            only the stock estimate. They never move the embouchure or tone
-            holes. This model includes temperature, open-end, embouchure, and
-            tone-hole approximations. These switches are provided for auditing;
-            this is not a validated reproduction of Flutomat.
-          </p>
-        </Section>
-      </aside>
+          </Section>
 
-      <article className="min-w-0 p-4 md:p-8">
-        <div className="flex justify-between font-mono text-[10px] tracking-wider">
-          <span>SCALED CONSTRUCTION VIEW</span>
-          <span className="text-teal">CENTER MEASUREMENTS</span>
-        </div>
-        <FluteDiagram result={result} labels={noteLabels} outsideDiameterMm={design.outsideDiameterMm} />
-        <DesignResults
-          design={design}
-          result={result}
-          rootHz={rootHz}
-          boreMm={boreMm}
-          noteLabels={noteLabels}
-        />
-      </article>
-    </main>
+          <Section number="05" title="Construction & advanced">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Plug offset">
+                <NumberInput
+                  value={design.plugOffsetMm}
+                  onChange={(value) => update('plugOffsetMm', value)}
+                />
+              </Field>
+              <Field label="Plug thickness">
+                <NumberInput
+                  value={design.plugThicknessMm}
+                  onChange={(value) => update('plugThicknessMm', value)}
+                />
+              </Field>
+              <Field label="Head margin">
+                <NumberInput
+                  value={design.headMarginMm}
+                  onChange={(value) => update('headMarginMm', value)}
+                />
+              </Field>
+              <Field label="Round blank up to">
+                <NumberInput
+                  value={design.roundToMm}
+                  onChange={(value) => update('roundToMm', value)}
+                />
+              </Field>
+              <Field label="Temperature">
+                <NumberInput
+                  value={design.temperatureC}
+                  onChange={(value) => update('temperatureC', value)}
+                  unit="°C"
+                />
+              </Field>
+              <Field label="Acoustic model">
+                <output className={inputClass}>Experimental cylindrical</output>
+              </Field>
+            </div>
+            <div className="mt-3 grid gap-2 border border-slate-200 p-3 text-xs">
+              {[
+                [
+                  'adjustSpeedForTemperature',
+                  'Temperature-adjust speed of sound',
+                ],
+                ['applyEndCorrection', 'Open-foot end correction'],
+                ['applyEmbouchureCorrection', 'Embouchure correction'],
+                ['applyToneHoleCorrections', 'Tone-hole corrections'],
+              ].map(([key, label]) => (
+                <label className="flex items-center gap-2" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(design[key as keyof DesignState])}
+                    onChange={(event) =>
+                      update(key as keyof DesignState, event.target.checked)
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Plug offset, plug thickness, head margin, and blank rounding affect
+              only the stock estimate. They never move the embouchure or tone
+              holes. This model includes temperature, open-end, embouchure, and
+              tone-hole approximations. These switches are provided for auditing;
+              this is not a validated reproduction of Flutomat.
+            </p>
+          </Section>
+        </aside>
+
+        <article className="min-w-0 p-4 md:p-8">
+          <div className="flex justify-between font-mono text-[10px] tracking-wider">
+            <span>SCALED CONSTRUCTION VIEW</span>
+            <span className="text-teal">CENTER MEASUREMENTS</span>
+          </div>
+          <FluteDiagram result={result} labels={noteLabels} outsideDiameterMm={design.outsideDiameterMm} />
+          <DesignResults
+            design={design}
+            result={result}
+            rootHz={rootHz}
+            boreMm={boreMm}
+            noteLabels={noteLabels}
+          />
+        </article>
+      </main>
+    </>
   );
 }
