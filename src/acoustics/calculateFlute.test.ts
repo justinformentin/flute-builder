@@ -70,3 +70,34 @@ test('plug and blank dimensions do not change the acoustic layout', () => {
   assert.notEqual(second.physicalLengthMm, first.physicalLengthMm);
   assert.notEqual(second.suggestedBlankMm, first.suggestedBlankMm);
 });
+
+test('temperature adjustment can be disabled independently', () => {
+  const cold = calculateFlute({ ...standardInput, temperatureC: 0 });
+  const fixed = calculateFlute({
+    ...standardInput,
+    temperatureC: 0,
+    adjustSpeedForTemperature: false,
+  });
+
+  assert.equal(fixed.speedOfSoundMps, speedOfSound(20));
+  assert.notEqual(fixed.soundingLengthMm, cold.soundingLengthMm);
+});
+
+test('individual acoustic correction groups can be disabled', () => {
+  const result = calculateFlute({
+    ...standardInput,
+    applyEndCorrection: false,
+    applyEmbouchureCorrection: false,
+    applyToneHoleCorrections: false,
+  });
+  const halfWaveMm =
+    (result.speedOfSoundMps * 1000) / (2 * standardInput.fundamentalHz);
+
+  assert.equal(result.endCorrectionMm, 0);
+  assert.equal(result.embouchureCorrectionMm, 0);
+  assert.ok(Math.abs(result.soundingLengthMm - halfWaveMm) < 0.0001);
+  result.holes.forEach((hole) => {
+    const expected = (result.speedOfSoundMps * 1000) / (2 * hole.frequencyHz);
+    assert.ok(Math.abs(hole.fromEmbouchureMm - expected) < 0.0001);
+  });
+});

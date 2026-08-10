@@ -5,7 +5,7 @@ import {
   openHoleCorrection,
   toneHoleCutoff,
 } from './corrections.ts';
-import { speedOfSound } from './speedOfSound.ts';
+import { referenceSpeedOfSoundMps, speedOfSound } from './speedOfSound.ts';
 import type { FluteInput, FluteResult, Notice } from './types.ts';
 
 /**
@@ -17,13 +17,22 @@ import type { FluteInput, FluteResult, Notice } from './types.ts';
  * separate from the sounding-length calculation.
  */
 export function calculateFlute(input: FluteInput): FluteResult {
-  const speedMps = speedOfSound(input.temperatureC);
-  const endCorrectionMm = openEndCorrection(input.boreDiameterMm);
-  const embouchureCorrectionMm = embouchureCorrection(
-    input.boreDiameterMm,
-    input.embouchureDiameterMm,
-    input.embouchureChimneyMm,
-  );
+  const speedMps =
+    input.adjustSpeedForTemperature === false
+      ? referenceSpeedOfSoundMps
+      : speedOfSound(input.temperatureC);
+  const endCorrectionMm =
+    input.applyEndCorrection === false
+      ? 0
+      : openEndCorrection(input.boreDiameterMm);
+  const embouchureCorrectionMm =
+    input.applyEmbouchureCorrection === false
+      ? 0
+      : embouchureCorrection(
+          input.boreDiameterMm,
+          input.embouchureDiameterMm,
+          input.embouchureChimneyMm,
+        );
   const rootAcousticLengthMm = (speedMps * 1000) / (2 * input.fundamentalHz);
   const soundingLengthMm =
     rootAcousticLengthMm - endCorrectionMm - embouchureCorrectionMm;
@@ -41,25 +50,30 @@ export function calculateFlute(input: FluteInput): FluteResult {
   for (const hole of targets) {
     const wavelengthMm = (speedMps * 1000) / hole.frequencyHz;
     const targetLengthMm = wavelengthMm / 2 - embouchureCorrectionMm;
-    const openCorrectionMm = openHoleCorrection(
-      input.boreDiameterMm,
-      hole.diameterMm,
-      input.wallThicknessMm,
-    );
+    const applyToneHoleCorrections = input.applyToneHoleCorrections !== false;
+    const openCorrectionMm = applyToneHoleCorrections
+      ? openHoleCorrection(
+          input.boreDiameterMm,
+          hole.diameterMm,
+          input.wallThicknessMm,
+        )
+      : 0;
     let fromEmbouchureMm = targetLengthMm - openCorrectionMm;
 
     for (let iteration = 0; iteration < 12; iteration += 1) {
-      const closedCorrectionMm = placed.reduce(
-        (total, downstreamHole) =>
-          total +
-          closedHoleCorrection(
-            input.boreDiameterMm,
-            downstreamHole.diameterMm,
-            input.wallThicknessMm,
-            wavelengthMm,
-          ),
-        0,
-      );
+      const closedCorrectionMm = applyToneHoleCorrections
+        ? placed.reduce(
+            (total, downstreamHole) =>
+              total +
+              closedHoleCorrection(
+                input.boreDiameterMm,
+                downstreamHole.diameterMm,
+                input.wallThicknessMm,
+                wavelengthMm,
+              ),
+            0,
+          )
+        : 0;
       const nextPositionMm =
         targetLengthMm - openCorrectionMm - closedCorrectionMm;
 

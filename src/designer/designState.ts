@@ -15,6 +15,10 @@ export interface DesignState {
   chimneyMm: number;
   holeDiameters: number[];
   temperatureC: number;
+  adjustSpeedForTemperature: boolean;
+  applyEndCorrection: boolean;
+  applyEmbouchureCorrection: boolean;
+  applyToneHoleCorrections: boolean;
   plugOffsetMm: number;
   plugThicknessMm: number;
   headMarginMm: number;
@@ -36,6 +40,10 @@ export const initialDesign: DesignState = {
   chimneyMm: pipePresets[1].wallMm,
   holeDiameters: Array(11).fill(7),
   temperatureC: 20,
+  adjustSpeedForTemperature: true,
+  applyEndCorrection: true,
+  applyEmbouchureCorrection: true,
+  applyToneHoleCorrections: true,
   plugOffsetMm: pipeId(pipePresets[1]),
   plugThicknessMm: 12,
   headMarginMm: 8,
