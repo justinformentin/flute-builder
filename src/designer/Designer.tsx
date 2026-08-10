@@ -353,7 +353,7 @@ export function Designer() {
           <span>SCALED CONSTRUCTION VIEW</span>
           <span className="text-teal">CENTER MEASUREMENTS</span>
         </div>
-        <FluteDiagram result={result} labels={noteLabels} />
+        <FluteDiagram result={result} labels={noteLabels} outsideDiameterMm={design.outsideDiameterMm} />
         <DesignResults
           design={design}
           result={result}
