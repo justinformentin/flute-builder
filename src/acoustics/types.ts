@@ -11,6 +11,10 @@ export interface FluteInput {
   embouchureChimneyMm: number;
   toneHoles: ToneHoleInput[];
   temperatureC: number;
+  adjustSpeedForTemperature?: boolean;
+  applyEndCorrection?: boolean;
+  applyEmbouchureCorrection?: boolean;
+  applyToneHoleCorrections?: boolean;
   plugOffsetMm?: number;
   plugThicknessMm?: number;
   headMarginMm?: number;

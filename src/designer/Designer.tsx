@@ -60,6 +60,10 @@ export function Designer() {
           diameterMm: design.holeDiameters[index] ?? 7,
         })),
         temperatureC: design.temperatureC,
+        adjustSpeedForTemperature: design.adjustSpeedForTemperature,
+        applyEndCorrection: design.applyEndCorrection,
+        applyEmbouchureCorrection: design.applyEmbouchureCorrection,
+        applyToneHoleCorrections: design.applyToneHoleCorrections,
         plugOffsetMm: design.plugOffsetMm,
         plugThicknessMm: design.plugThicknessMm,
         headMarginMm: design.headMarginMm,
@@ -335,9 +339,40 @@ export function Designer() {
               />
             </Field>
             <Field label="Acoustic model">
-              <output className={inputClass}>Corrected Flutomat</output>
+              <output className={inputClass}>Experimental cylindrical</output>
             </Field>
           </div>
+          <div className="mt-3 grid gap-2 border border-slate-200 p-3 text-xs">
+            {[
+              [
+                'adjustSpeedForTemperature',
+                'Temperature-adjust speed of sound',
+              ],
+              ['applyEndCorrection', 'Open-foot end correction'],
+              ['applyEmbouchureCorrection', 'Embouchure correction'],
+              ['applyToneHoleCorrections', 'Tone-hole corrections'],
+            ].map(([key, label]) => (
+              <label className="flex items-center gap-2" key={key}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(design[key as keyof DesignState])}
+                  onChange={(event) =>
+                    update(key as keyof DesignState, event.target.checked)
+                  }
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Plug offset positions the plug face and also contributes to the
+            stock estimate. Plug thickness, head margin, and blank rounding
+            affect only the stock estimate. None of these settings move the
+            embouchure or tone holes. This model includes temperature, open-end,
+            embouchure, and tone-hole approximations. These switches are
+            provided for auditing; this is not a validated reproduction of
+            Flutomat.
+          </p>
         </Section>
       </aside>
 
