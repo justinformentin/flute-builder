@@ -7,6 +7,7 @@ import {
   inputClass,
   NumberInput,
 } from '../components/FormControls';
+import { initialDesign, type DesignState } from '../designer/designState';
 import { pipeId, pipePresets } from '../materials/pipePresets';
 import { noteFrequency, roots } from '../music/notes';
 import { scaleById, scales } from '../music/scales';
@@ -19,7 +20,7 @@ interface ExplorerRow {
   leftoverMm: number;
 }
 
-export function Explorer() {
+export function Explorer({ onSelect }: { onSelect: (design: DesignState) => void }) {
   const [stockMm, setStockMm] = useState(600);
   const [pipeIndex, setPipeIndex] = useState(1);
   const [scaleId, setScaleId] = useState('major');
@@ -209,6 +210,9 @@ export function Explorer() {
             row={row}
             scaleName={scale.name}
             key={`${row.root}-${row.octave}`}
+            pipeIndex={pipeIndex}
+            scaleId={scaleId}
+            onSelect={onSelect}
             pair={
               showPairs
                 ? rows.find(
@@ -261,10 +265,16 @@ export function Explorer() {
 function ExplorerCard({
   row,
   scaleName,
+  pipeIndex,
+  scaleId,
+  onSelect,
   pair,
 }: {
   row: ExplorerRow;
   scaleName: string;
+  pipeIndex: number;
+  scaleId: string;
+  onSelect: (design: DesignState) => void;
   pair?: ExplorerRow;
 }) {
   const holePositions = row.result.holes.map((hole) => hole.fromFootMm);
@@ -316,6 +326,25 @@ function ExplorerCard({
           </>
         )}
       </dl>
+      <button
+        className="mt-3 w-full border border-navy bg-navy px-4 py-2 font-mono text-[10px] text-white hover:bg-navy/80"
+        onClick={() => {
+          const pipe = pipePresets[pipeIndex];
+          onSelect({
+            ...initialDesign,
+            root: row.root,
+            octave: row.octave,
+            scaleId,
+            pipeIndex,
+            outsideDiameterMm: pipe.odMm,
+            wallMm: pipe.wallMm,
+            chimneyMm: pipe.wallMm,
+            plugOffsetMm: pipeId(pipe),
+          });
+        }}
+      >
+        SELECT — open in Designer
+      </button>
     </article>
   );
 }

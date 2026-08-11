@@ -45,7 +45,7 @@ export default function App() {
         {page === 'designer' ? (
           <Designer design={design} setDesign={setDesign} />
         ) : page === 'explorer' ? (
-          <Explorer />
+          <Explorer onSelect={(d) => { handleLoad(d); handleSetPage('designer'); }} />
         ) : (
           <SavedDesigns onLoad={handleLoad} />
         )}
