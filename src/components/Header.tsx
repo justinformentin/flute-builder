@@ -1,7 +1,8 @@
-export type Page = 'designer' | 'explorer' | 'saved';
+export type Page = 'designer' | 'tuner' | 'explorer' | 'saved';
 
 const tabLabels: Record<Page, string> = {
   designer: 'Designer',
+  tuner: 'Tuner',
   explorer: 'Flute Explorer',
   saved: 'Saved',
 };
@@ -27,7 +28,7 @@ export function Header({
         </div>
       </div>
       <nav className="flex h-full">
-        {(['designer', 'explorer', 'saved'] as const).map((item) => (
+        {(['designer', 'tuner', 'explorer', 'saved'] as const).map((item) => (
           <button
             className={`relative border-b-[3px] px-4 text-sm font-bold md:px-7 ${
               page === item

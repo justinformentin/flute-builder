@@ -5,6 +5,7 @@ import { initialDesign, type DesignState } from './designer/designState';
 import { Explorer } from './explorer/Explorer';
 import { roots } from './music/notes';
 import { SavedDesigns } from './saved/SavedDesigns';
+import { Tuner } from './tuner/Tuner';
 
 export default function App() {
   const [page, setPage] = useState<Page>('designer');
@@ -44,8 +45,15 @@ export default function App() {
       <div className="pt-[50px]">
         {page === 'designer' ? (
           <Designer design={design} setDesign={setDesign} />
+        ) : page === 'tuner' ? (
+          <Tuner design={design} />
         ) : page === 'explorer' ? (
-          <Explorer onSelect={(d) => { handleLoad(d); handleSetPage('designer'); }} />
+          <Explorer
+            onSelect={(d) => {
+              handleLoad(d);
+              handleSetPage('designer');
+            }}
+          />
         ) : (
           <SavedDesigns onLoad={handleLoad} />
         )}
