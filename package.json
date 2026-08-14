@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "format": "prettier --write .",
-    "test": "node --experimental-strip-types --test src/acoustics/calculateFlute.test.ts src/music/notes.test.ts"
+    "test": "node --experimental-strip-types --test src/acoustics/calculateFlute.test.ts src/music/notes.test.ts src/tuner/pitch.test.ts"
   },
   "dependencies": {
     "react": "^19.2.8",
