@@ -2,4 +2,5 @@
 export const speedOfSound = (temperatureC: number) =>
   331.3 + 0.606 * temperatureC;
 
-export const referenceSpeedOfSoundMps = speedOfSound(20);
+/** Fixed value used by Flutomat. */
+export const flutomatSpeedOfSoundMps = 345;

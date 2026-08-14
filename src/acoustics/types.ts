@@ -9,6 +9,7 @@ export interface FluteInput {
   wallThicknessMm: number;
   embouchureDiameterMm: number;
   embouchureChimneyMm: number;
+  lipCoveragePercent?: number;
   toneHoles: ToneHoleInput[];
   temperatureC: number;
   adjustSpeedForTemperature?: boolean;
@@ -39,6 +40,7 @@ export interface FluteResult {
   speedOfSoundMps: number;
   soundingLengthMm: number;
   endCorrectionMm: number;
+  closedHoleCorrectionMm: number;
   embouchureCorrectionMm: number;
   holes: HoleResult[];
   plugOffsetMm: number;

@@ -1,49 +1,53 @@
-/** Unflanged circular pipe radiation correction (0.6133 × radius). */
+/** Flutomat's fixed open-end correction: 0.30665 times the bore diameter. */
 export const openEndCorrection = (boreDiameterMm: number) =>
-  (0.6133 * boreDiameterMm) / 2;
+  0.30665 * boreDiameterMm;
 
-/** Equivalent bore length of a side opening, including its chimney and radiation mass. */
-export function openHoleCorrection(
-  boreMm: number,
-  holeMm: number,
-  chimneyMm: number,
-) {
-  return (boreMm / holeMm) ** 2 * (chimneyMm + (0.75 * holeMm) / 2);
-}
+/** Flutomat's effective chimney height for an open tone hole. */
+export const effectiveToneHoleHeight = (
+  wallThicknessMm: number,
+  holeDiameterMm: number,
+) => wallThicknessMm + 0.75 * holeDiameterMm;
 
-/** Closed side branches add compliance. This corrected form uses each hole's own area. */
-export function closedHoleCorrection(
-  boreMm: number,
-  holeMm: number,
-  chimneyMm: number,
-  wavelengthMm: number,
+/** Flutomat's correction for a closed tone hole. */
+export const closedHoleCorrection = (
+  boreDiameterMm: number,
+  holeDiameterMm: number,
+  wallThicknessMm: number,
+) => 0.25 * wallThicknessMm * (holeDiameterMm / boreDiameterMm) ** 2;
+
+/**
+ * Flutomat's active "alternative" embouchure equation. The adjusted diameter
+ * is the physical opening after accounting for lip coverage.
+ */
+export function embouchureCorrection(
+  boreDiameterMm: number,
+  adjustedEmbouchureDiameterMm: number,
+  wallThicknessMm: number,
 ) {
-  const branch = chimneyMm + (0.75 * holeMm) / 2;
+  const ratio = boreDiameterMm / adjustedEmbouchureDiameterMm;
   return (
-    (holeMm / boreMm) ** 2 * branch * (1 + branch / Math.max(wavelengthMm, 1))
+    ratio ** 2 *
+    (boreDiameterMm / 2 +
+      wallThicknessMm +
+      (0.6133 * adjustedEmbouchureDiameterMm) / 2)
   );
 }
 
-export function embouchureCorrection(
-  boreMm: number,
-  embouchureMm: number,
-  chimneyMm: number,
-) {
-  return (boreMm / embouchureMm) ** 2 * (chimneyMm + (0.75 * embouchureMm) / 2);
-}
-
-/** First lattice cutoff estimate for a tone hole at spacing s. */
+/** Flutomat's cutoff estimate for the open-hole approximation. */
 export function toneHoleCutoff(
   speedMps: number,
-  boreMm: number,
-  holeMm: number,
-  chimneyMm: number,
+  boreDiameterMm: number,
+  holeDiameterMm: number,
+  wallThicknessMm: number,
   spacingMm: number,
 ) {
-  const te = chimneyMm + (0.75 * holeMm) / 2;
   return (
-    (((speedMps * 1000) / (2 * Math.PI)) * holeMm) /
-    boreMm /
-    Math.sqrt(Math.max(te * spacingMm, 0.01))
+    (0.5 * speedMps * 1000 * holeDiameterMm) /
+    (Math.PI *
+      boreDiameterMm *
+      Math.sqrt(
+        effectiveToneHoleHeight(wallThicknessMm, holeDiameterMm) *
+          Math.max(spacingMm, 0.01),
+      ))
   );
 }

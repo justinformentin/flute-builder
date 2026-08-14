@@ -2,24 +2,24 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { calculateFlute } from './calculateFlute.ts';
 import {
+  closedHoleCorrection,
   embouchureCorrection,
   openEndCorrection,
-  openHoleCorrection,
 } from './corrections.ts';
-import { speedOfSound } from './speedOfSound.ts';
+import { flutomatSpeedOfSoundMps, speedOfSound } from './speedOfSound.ts';
 
 const standardInput = {
-  fundamentalHz: 293.6647679,
-  boreDiameterMm: 20.93,
-  wallThicknessMm: 2.87,
+  fundamentalHz: 587.3295358,
+  boreDiameterMm: 15.798,
+  wallThicknessMm: 2.769,
   embouchureDiameterMm: 10,
-  embouchureChimneyMm: 2.87,
-  toneHoles: [200, 400, 500, 700, 900, 1100].map((cents) => ({
+  embouchureChimneyMm: 2.769,
+  toneHoles: [200, 400, 500, 700, 900, 1100].map((cents, index) => ({
     cents,
-    diameterMm: 7,
+    diameterMm: [7.9, 9.5, 7.9, 7.9, 7.9, 9.5][index],
   })),
   temperatureC: 20,
-  plugOffsetMm: 20.93,
+  plugOffsetMm: 15.798,
   plugThicknessMm: 12,
   headMarginMm: 8,
   constructionRoundingMm: 5,
@@ -30,19 +30,19 @@ test('speed of sound uses temperature correction', () => {
 });
 
 test('correction terms match documented equations', () => {
-  assert.ok(Math.abs(openEndCorrection(20.93) - 6.418) < 0.001);
-  assert.ok(Math.abs(openHoleCorrection(20.93, 7, 2.87) - 49.126) < 0.01);
-  assert.ok(Math.abs(embouchureCorrection(20.93, 10, 2.87) - 29.0) < 0.01);
+  assert.ok(Math.abs(openEndCorrection(15.798) - 4.8445) < 0.001);
+  assert.ok(Math.abs(closedHoleCorrection(15.798, 7.9, 2.769) - 0.173) < 0.001);
+  assert.ok(Math.abs(embouchureCorrection(15.798, 10, 2.769) - 34.278) < 0.001);
 });
 
-test('entire corrected flute regression produces stable measurements', () => {
+test('D5 regression reproduces Flutomat measurements', () => {
   const result = calculateFlute(standardInput);
-  assert.ok(Math.abs(result.soundingLengthMm - 549.296) < 0.05);
+  assert.ok(Math.abs(result.soundingLengthMm - 253.5515) < 0.001);
   assert.deepEqual(
-    result.holes.map((hole) => Number(hole.fromFootMm.toFixed(2))),
-    [109.59, 165.81, 191.24, 238.41, 280.37, 317.68],
+    result.holes.map((hole) => Number(hole.fromFootMm.toFixed(1))),
+    [47, 72.1, 83.4, 112.8, 131.3, 146.3],
   );
-  assert.equal(result.suggestedBlankMm, 595);
+  assert.equal(result.suggestedBlankMm, 290);
 });
 
 test('lip plate chimney changes acoustic dimensions', () => {
@@ -53,6 +53,18 @@ test('lip plate chimney changes acoustic dimensions', () => {
   });
   assert.notEqual(plain.soundingLengthMm, plated.soundingLengthMm);
   assert.ok(plated.embouchureCorrectionMm > plain.embouchureCorrectionMm);
+});
+
+test('lip coverage uses Flutomat adjusted embouchure diameter', () => {
+  const uncovered = calculateFlute(standardInput);
+  const covered = calculateFlute({
+    ...standardInput,
+    lipCoveragePercent: 17,
+  });
+
+  assert.ok(covered.embouchureCorrectionMm > uncovered.embouchureCorrectionMm);
+  assert.ok(covered.soundingLengthMm < uncovered.soundingLengthMm);
+  assert.ok(Math.abs(covered.soundingLengthMm - 240) < 0.1);
 });
 
 test('plug and blank dimensions do not change the acoustic layout', () => {
@@ -72,14 +84,18 @@ test('plug and blank dimensions do not change the acoustic layout', () => {
 });
 
 test('temperature adjustment can be disabled independently', () => {
-  const cold = calculateFlute({ ...standardInput, temperatureC: 0 });
+  const cold = calculateFlute({
+    ...standardInput,
+    temperatureC: 0,
+    adjustSpeedForTemperature: true,
+  });
   const fixed = calculateFlute({
     ...standardInput,
     temperatureC: 0,
     adjustSpeedForTemperature: false,
   });
 
-  assert.equal(fixed.speedOfSoundMps, speedOfSound(20));
+  assert.equal(fixed.speedOfSoundMps, flutomatSpeedOfSoundMps);
   assert.notEqual(fixed.soundingLengthMm, cold.soundingLengthMm);
 });
 
@@ -91,7 +107,8 @@ test('individual acoustic correction groups can be disabled', () => {
     applyToneHoleCorrections: false,
   });
   const halfWaveMm =
-    (result.speedOfSoundMps * 1000) / (2 * standardInput.fundamentalHz);
+    (result.speedOfSoundMps * 1000) /
+    (2 * Math.round(standardInput.fundamentalHz));
 
   assert.equal(result.endCorrectionMm, 0);
   assert.equal(result.embouchureCorrectionMm, 0);

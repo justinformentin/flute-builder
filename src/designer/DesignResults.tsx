@@ -15,7 +15,7 @@ function Summary({
   boreMm: number;
 }) {
   const acousticHalfWaveMm =
-    (result.speedOfSoundMps * 1000) / (2 * rootHz);
+    (result.speedOfSoundMps * 1000) / (2 * Math.round(rootHz));
   const items = [
     [
       'ROOT',
@@ -51,18 +51,22 @@ function Summary({
           </div>
         ))}
       </div>
-      <div className="mb-5 grid gap-px bg-slate-300 font-mono text-[10px] sm:grid-cols-3">
+      <div className="mb-5 grid gap-px bg-slate-300 font-mono text-[10px] sm:grid-cols-2 lg:grid-cols-4">
         <div className="bg-slate-100 p-3">
           <b className="block text-slate-500">ACOUSTIC HALF-WAVE</b>
           {acousticHalfWaveMm.toFixed(1)} mm
         </div>
         <div className="bg-slate-100 p-3">
-          <b className="block text-slate-500">OPEN-FOOT CORRECTION</b>
-          − {result.endCorrectionMm.toFixed(1)} mm
+          <b className="block text-slate-500">OPEN-FOOT CORRECTION</b>−{' '}
+          {result.endCorrectionMm.toFixed(1)} mm
         </div>
         <div className="bg-slate-100 p-3">
-          <b className="block text-slate-500">EMBOUCHURE CORRECTION</b>
-          − {result.embouchureCorrectionMm.toFixed(1)} mm
+          <b className="block text-slate-500">CLOSED-HOLE CORRECTIONS</b>−{' '}
+          {result.closedHoleCorrectionMm.toFixed(1)} mm
+        </div>
+        <div className="bg-slate-100 p-3">
+          <b className="block text-slate-500">EMBOUCHURE CORRECTION</b>−{' '}
+          {result.embouchureCorrectionMm.toFixed(1)} mm
         </div>
       </div>
     </>

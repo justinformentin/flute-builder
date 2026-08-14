@@ -55,6 +55,7 @@ export function Designer() {
         wallThicknessMm: design.wallMm,
         embouchureDiameterMm: design.embouchureMm,
         embouchureChimneyMm: effectiveChimneyMm,
+        lipCoveragePercent: design.lipCoveragePercent,
         toneHoles: scale.cents.map((cents, index) => ({
           cents,
           diameterMm: design.holeDiameters[index] ?? 7,
@@ -224,6 +225,13 @@ export function Designer() {
               </output>
             </Field>
           </div>
+          <Field label="Lip coverage">
+            <NumberInput
+              value={design.lipCoveragePercent}
+              onChange={(value) => update('lipCoveragePercent', value)}
+              unit="%"
+            />
+          </Field>
           <label className="flex items-center gap-2 text-xs font-semibold">
             <input
               type="checkbox"
@@ -339,14 +347,14 @@ export function Designer() {
               />
             </Field>
             <Field label="Acoustic model">
-              <output className={inputClass}>Experimental cylindrical</output>
+              <output className={inputClass}>Flutomat / Benade</output>
             </Field>
           </div>
           <div className="mt-3 grid gap-2 border border-slate-200 p-3 text-xs">
             {[
               [
                 'adjustSpeedForTemperature',
-                'Temperature-adjust speed of sound',
+                'Temperature-adjust speed (Flutomat uses fixed 345 m/s)',
               ],
               ['applyEndCorrection', 'Open-foot end correction'],
               ['applyEmbouchureCorrection', 'Embouchure correction'],
@@ -368,10 +376,9 @@ export function Designer() {
             Plug offset positions the plug face and also contributes to the
             stock estimate. Plug thickness, head margin, and blank rounding
             affect only the stock estimate. None of these settings move the
-            embouchure or tone holes. This model includes temperature, open-end,
-            embouchure, and tone-hole approximations. These switches are
-            provided for auditing; this is not a validated reproduction of
-            Flutomat.
+            embouchure or tone holes. The default model is a direct translation
+            of Flutomat's Benade-equation solver; switches are provided for
+            auditing its correction groups.
           </p>
         </Section>
       </aside>

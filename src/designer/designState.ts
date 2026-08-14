@@ -9,6 +9,7 @@ export interface DesignState {
   outsideDiameterMm: number;
   wallMm: number;
   embouchureMm: number;
+  lipCoveragePercent: number;
   lipPlate: boolean;
   lipPlateMm: number;
   overrideChimney: boolean;
@@ -34,13 +35,14 @@ export const initialDesign: DesignState = {
   outsideDiameterMm: pipePresets[1].odMm,
   wallMm: pipePresets[1].wallMm,
   embouchureMm: 10,
+  lipCoveragePercent: 0,
   lipPlate: false,
   lipPlateMm: 1.5,
   overrideChimney: false,
   chimneyMm: pipePresets[1].wallMm,
   holeDiameters: Array(11).fill(7),
   temperatureC: 20,
-  adjustSpeedForTemperature: true,
+  adjustSpeedForTemperature: false,
   applyEndCorrection: true,
   applyEmbouchureCorrection: true,
   applyToneHoleCorrections: true,

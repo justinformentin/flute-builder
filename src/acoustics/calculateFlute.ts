@@ -1,113 +1,139 @@
 import {
   closedHoleCorrection,
+  effectiveToneHoleHeight,
   embouchureCorrection,
   openEndCorrection,
-  openHoleCorrection,
   toneHoleCutoff,
 } from './corrections.ts';
-import { referenceSpeedOfSoundMps, speedOfSound } from './speedOfSound.ts';
+import { flutomatSpeedOfSoundMps, speedOfSound } from './speedOfSound.ts';
 import type { FluteInput, FluteResult, Notice } from './types.ts';
 
 /**
- * Pure corrected cylindrical-flute solver.
- *
- * Positions begin with the acoustic half wavelength for each target and are then
- * iterated because downstream closed holes and first-open-hole inertance affect
- * the effective length together. Physical plug and blank dimensions are kept
- * separate from the sounding-length calculation.
+ * Flutomat's Benade-equation solver, translated from findLocations2().
+ * Internal locations share Flutomat's undefined acoustic origin; public
+ * measurements are converted to physical distances from the open foot.
  */
 export function calculateFlute(input: FluteInput): FluteResult {
+  // Flutomat rounds its MIDI-derived key pitch before calculating intervals.
+  const fundamentalHz = Math.round(input.fundamentalHz);
   const speedMps =
-    input.adjustSpeedForTemperature === false
-      ? referenceSpeedOfSoundMps
-      : speedOfSound(input.temperatureC);
-  const endCorrectionMm =
-    input.applyEndCorrection === false
-      ? 0
-      : openEndCorrection(input.boreDiameterMm);
-  const embouchureCorrectionMm =
-    input.applyEmbouchureCorrection === false
-      ? 0
-      : embouchureCorrection(
+    input.adjustSpeedForTemperature === true
+      ? speedOfSound(input.temperatureC)
+      : flutomatSpeedOfSoundMps;
+  const applyEndCorrection = input.applyEndCorrection !== false;
+  const applyEmbouchureCorrection = input.applyEmbouchureCorrection !== false;
+  const applyToneHoleCorrections = input.applyToneHoleCorrections !== false;
+  const endCorrectionMm = applyEndCorrection
+    ? openEndCorrection(input.boreDiameterMm)
+    : 0;
+  const adjustedEmbouchureDiameterMm =
+    input.embouchureDiameterMm *
+    (1 - Math.min(99, Math.max(0, input.lipCoveragePercent ?? 0)) / 100);
+  const embouchureCorrectionMm = applyEmbouchureCorrection
+    ? embouchureCorrection(
+        input.boreDiameterMm,
+        adjustedEmbouchureDiameterMm,
+        input.embouchureChimneyMm,
+      )
+    : 0;
+
+  const targets = input.toneHoles.map((hole) => ({
+    ...hole,
+    frequencyHz: fundamentalHz * 2 ** (hole.cents / 1200),
+  }));
+  const closedCorrection = (index: number) =>
+    applyToneHoleCorrections
+      ? closedHoleCorrection(
           input.boreDiameterMm,
-          input.embouchureDiameterMm,
-          input.embouchureChimneyMm,
-        );
-  const rootAcousticLengthMm = (speedMps * 1000) / (2 * input.fundamentalHz);
-  const soundingLengthMm =
-    rootAcousticLengthMm - endCorrectionMm - embouchureCorrectionMm;
-
-  const targets = input.toneHoles
-    .map((hole, originalIndex) => ({
-      ...hole,
-      originalIndex,
-      frequencyHz: input.fundamentalHz * 2 ** (hole.cents / 1200),
-    }))
-    .sort((first, second) => second.frequencyHz - first.frequencyHz);
-
-  const placed: Array<(typeof targets)[number] & { fromFootMm: number }> = [];
-
-  for (const hole of targets) {
-    const wavelengthMm = (speedMps * 1000) / hole.frequencyHz;
-    const targetLengthMm = wavelengthMm / 2 - embouchureCorrectionMm;
-    const applyToneHoleCorrections = input.applyToneHoleCorrections !== false;
-    const openCorrectionMm = applyToneHoleCorrections
-      ? openHoleCorrection(
-          input.boreDiameterMm,
-          hole.diameterMm,
+          targets[index].diameterMm,
           input.wallThicknessMm,
         )
       : 0;
-    let fromEmbouchureMm = targetLengthMm - openCorrectionMm;
 
-    for (let iteration = 0; iteration < 12; iteration += 1) {
-      const closedCorrectionMm = applyToneHoleCorrections
-        ? placed.reduce(
-            (total, downstreamHole) =>
-              total +
-              closedHoleCorrection(
-                input.boreDiameterMm,
-                downstreamHole.diameterMm,
-                input.wallThicknessMm,
-                wavelengthMm,
-              ),
-            0,
-          )
-        : 0;
-      const nextPositionMm =
-        targetLengthMm - openCorrectionMm - closedCorrectionMm;
+  let endX = (speedMps * 1000 * 0.5) / fundamentalHz;
+  endX -= endCorrectionMm;
+  let closedHoleCorrectionMm = 0;
+  targets.forEach((_, index) => {
+    const correctionMm = closedCorrection(index);
+    closedHoleCorrectionMm += correctionMm;
+    endX -= correctionMm;
+  });
 
-      if (Math.abs(nextPositionMm - fromEmbouchureMm) < 0.0001) {
-        break;
-      }
-      fromEmbouchureMm = (fromEmbouchureMm + nextPositionMm) / 2;
+  const acousticLocations: number[] = [];
+  if (targets.length > 0) {
+    let halfWave = (speedMps * 1000 * 0.5) / targets[0].frequencyHz;
+    for (let index = 1; index < targets.length; index += 1) {
+      halfWave -= closedCorrection(index);
     }
 
-    placed.push({
-      ...hole,
-      fromFootMm: soundingLengthMm - fromEmbouchureMm,
-    });
+    if (applyToneHoleCorrections) {
+      const areaRatio = (targets[0].diameterMm / input.boreDiameterMm) ** 2;
+      const a = areaRatio;
+      const b = -(endX + halfWave) * areaRatio;
+      const c =
+        endX * halfWave * areaRatio +
+        effectiveToneHoleHeight(input.wallThicknessMm, targets[0].diameterMm) *
+          (halfWave - endX);
+      acousticLocations[0] = smallerQuadraticRoot(a, b, c);
+    } else {
+      acousticLocations[0] = halfWave;
+    }
+
+    for (let index = 1; index < targets.length; index += 1) {
+      halfWave = (speedMps * 1000 * 0.5) / targets[index].frequencyHz;
+      if (index < targets.length - 1) {
+        for (
+          let closedIndex = index;
+          closedIndex < targets.length;
+          closedIndex += 1
+        ) {
+          halfWave -= closedCorrection(closedIndex);
+        }
+      }
+
+      if (applyToneHoleCorrections) {
+        const holeCalculation =
+          effectiveToneHoleHeight(
+            input.wallThicknessMm,
+            targets[index].diameterMm,
+          ) *
+          (input.boreDiameterMm / targets[index].diameterMm) ** 2;
+        const a = 2;
+        const b =
+          -acousticLocations[index - 1] - 3 * halfWave + holeCalculation;
+        const c =
+          acousticLocations[index - 1] * (halfWave - holeCalculation) +
+          halfWave ** 2;
+        acousticLocations[index] = smallerQuadraticRoot(a, b, c);
+      } else {
+        acousticLocations[index] = halfWave;
+      }
+    }
   }
 
-  const ordered = placed.sort(
-    (first, second) => first.originalIndex - second.originalIndex,
-  );
-  const holes = ordered.map((hole, index) => {
-    const previous = index > 0 ? ordered[index - 1] : undefined;
-    const centerSpacingMm = previous
-      ? hole.fromFootMm - previous.fromFootMm
-      : undefined;
+  const soundingLengthMm = endX - embouchureCorrectionMm;
+  const holes = targets.map((hole, index) => {
+    const fromFootMm = endX - acousticLocations[index];
+    const previousFromFootMm =
+      index > 0 ? endX - acousticLocations[index - 1] : undefined;
+    const centerSpacingMm =
+      previousFromFootMm === undefined
+        ? undefined
+        : fromFootMm - previousFromFootMm;
     const edgeSpacingMm =
-      previous && centerSpacingMm !== undefined
-        ? centerSpacingMm - (hole.diameterMm + previous.diameterMm) / 2
-        : undefined;
+      centerSpacingMm === undefined
+        ? undefined
+        : centerSpacingMm -
+          (hole.diameterMm + targets[index - 1].diameterMm) / 2;
+    const cutoffSpacingMm =
+      index === 0
+        ? fromFootMm
+        : acousticLocations[index - 1] - acousticLocations[index];
 
     return {
-      cents: hole.cents,
-      diameterMm: hole.diameterMm,
-      frequencyHz: hole.frequencyHz,
-      fromFootMm: hole.fromFootMm,
-      fromEmbouchureMm: soundingLengthMm - hole.fromFootMm,
+      ...hole,
+      fromFootMm,
+      fromEmbouchureMm: soundingLengthMm - fromFootMm,
       centerSpacingMm,
       edgeSpacingMm,
       cutoffHz: toneHoleCutoff(
@@ -115,15 +141,49 @@ export function calculateFlute(input: FluteInput): FluteResult {
         input.boreDiameterMm,
         hole.diameterMm,
         input.wallThicknessMm,
-        Math.abs(centerSpacingMm ?? hole.fromFootMm),
+        cutoffSpacingMm,
       ),
     };
   });
 
+  const notices = buildNotices(input, soundingLengthMm, holes);
+  const plugOffsetMm = input.plugOffsetMm ?? input.boreDiameterMm;
+  const plugThicknessMm = input.plugThicknessMm ?? 12;
+  const headMarginMm = input.headMarginMm ?? 8;
+  const physicalLengthMm =
+    soundingLengthMm + plugOffsetMm + plugThicknessMm + headMarginMm;
+  const roundingMm = input.constructionRoundingMm ?? 5;
+
+  return {
+    speedOfSoundMps: speedMps,
+    soundingLengthMm,
+    endCorrectionMm,
+    closedHoleCorrectionMm,
+    embouchureCorrectionMm,
+    holes,
+    plugOffsetMm,
+    plugFaceMm: soundingLengthMm + plugOffsetMm,
+    plugThicknessMm,
+    headMarginMm,
+    physicalLengthMm,
+    suggestedBlankMm: Math.ceil(physicalLengthMm / roundingMm) * roundingMm,
+    notices,
+  };
+}
+
+function smallerQuadraticRoot(a: number, b: number, c: number) {
+  return (-b - Math.sqrt(b ** 2 - 4 * a * c)) / (2 * a);
+}
+
+function buildNotices(
+  input: FluteInput,
+  soundingLengthMm: number,
+  holes: FluteResult['holes'],
+) {
   const notices: Notice[] = [];
   const calculatedValues = [
     soundingLengthMm,
-    ...holes.map((hole) => hole.fromFootMm),
+    ...holes.flatMap((hole) => [hole.fromFootMm, hole.cutoffHz]),
   ];
   if (!calculatedValues.every(Number.isFinite)) {
     notices.push({
@@ -133,10 +193,10 @@ export function calculateFlute(input: FluteInput): FluteResult {
   }
 
   holes.forEach((hole, index) => {
-    if (hole.diameterMm > input.boreDiameterMm) {
+    if (hole.diameterMm > input.boreDiameterMm * 0.9) {
       notices.push({
         severity: 'warning',
-        message: `Hole ${index + 1} is larger than the bore.`,
+        message: `Hole ${index + 1} exceeds Flutomat's 90% bore limit.`,
       });
     }
     if (hole.fromFootMm < 0 || hole.fromFootMm > soundingLengthMm) {
@@ -163,36 +223,5 @@ export function calculateFlute(input: FluteInput): FluteResult {
       });
     }
   });
-
-  const boreLengthRatio = soundingLengthMm / input.boreDiameterMm;
-  if (boreLengthRatio > 45 || boreLengthRatio < 8) {
-    notices.push({
-      severity: 'information',
-      message: 'The bore-to-length ratio is unusual for a transverse flute.',
-    });
-  }
-
-  const plugOffsetMm = input.plugOffsetMm ?? input.boreDiameterMm;
-  const plugThicknessMm = input.plugThicknessMm ?? 12;
-  const headMarginMm = input.headMarginMm ?? 8;
-  const physicalLengthMm =
-    soundingLengthMm + plugOffsetMm + plugThicknessMm + headMarginMm;
-  const roundingMm = input.constructionRoundingMm ?? 5;
-  const suggestedBlankMm =
-    Math.ceil(physicalLengthMm / roundingMm) * roundingMm;
-
-  return {
-    speedOfSoundMps: speedMps,
-    soundingLengthMm,
-    endCorrectionMm,
-    embouchureCorrectionMm,
-    holes,
-    plugOffsetMm,
-    plugFaceMm: soundingLengthMm + plugOffsetMm,
-    plugThicknessMm,
-    headMarginMm,
-    physicalLengthMm,
-    suggestedBlankMm,
-    notices,
-  };
+  return notices;
 }
